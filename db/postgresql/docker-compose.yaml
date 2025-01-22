@@ -1,0 +1,81 @@
+services:
+  # PostgeSQL
+  postgresql-server:
+    container_name: postgresql-17
+    image: postgres:17
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      DB_PASSWORD_READONLY: ${DB_PASSWORD_READONLY}
+      PGDATA: /data/postgres
+    ports:
+      - ${PORT}:5432
+    volumes:
+      - './docker/data:/data/postgres'
+      - './docker/sql:/docker-entrypoint-initdb.d'
+      - './docker/backups:/backup'
+      - './docker/logs:/var/log/postgresql'
+      - './docker/cnf/pg_hba.conf:/etc/postgresql/pg_hba.conf'
+      - './docker/cnf/postgresql.conf:/etc/postgresql/postgresql.conf'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: always
+    command: >
+      postgres -c max_connections=1000
+               -c shared_buffers=256MB
+               -c effective_cache_size=768MB
+               -c maintenance_work_mem=64MB
+               -c checkpoint_completion_target=0.7
+               -c wal_buffers=16MB
+               -c default_statistics_target=100
+               -c config_file=/etc/postgresql/postgresql.conf
+               -c hba_file=/etc/postgresql/pg_hba.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${DB_NAME} -U ${DB_USERNAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - db-network
+
+  pgadmin:
+    # PGAdmin
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    env_file:
+      - .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - 16543:80
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: always
+    user: root
+    volumes:
+      - ./docker/servers.json:/pgadmin4/servers.json
+      - ./docker/pgpass:/var/lib/pgadmin/storage/${STORE_PASSFILE}/pgpass
+    entrypoint: >
+      sh -c "
+      set -e;
+      chmod 600 /var/lib/pgadmin/storage/${STORE_PASSFILE}/pgpass;
+      /entrypoint.sh
+      "
+    depends_on:
+      - postgresql-server
+    networks:
+      - db-network
+
+networks:
+  db-network:
+    driver: bridge

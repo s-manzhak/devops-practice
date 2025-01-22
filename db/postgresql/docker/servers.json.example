@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "<NAME>",
+      "Group": "<GROUP>",
+      "Host": "<DOCKER_SERVICE_NAME>",
+      "Port": 5432,
+      "MaintenanceDB": "<DB>",
+      "Username": "<DB_USERNAME",
+      "PassFile": "/pgpass",
+      "SSLMode": "disable"
+    }
+  }
+}
